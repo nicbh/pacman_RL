@@ -15,15 +15,16 @@ import java.util.concurrent.TimeoutException;
 import ontology.Types;
 import tools.ElapsedCpuTimer;
 import tools.Utils;
+import tools.Vector2d;
 import weka.classifiers.Classifier;
 import weka.core.Instance;
 import weka.core.Instances;
 
 public class Agent extends AbstractPlayer {
 
+    public static HashMap<Integer, Types.ACTIONS> action_mapping;
     protected static Instances m_dataset;
     private static int SIMULATION_DEPTH = 20;
-    private final HashMap<Integer, Types.ACTIONS> action_mapping;
     protected Classifier m_model;
     protected Random m_rnd;
     protected QPolicy m_policy;
@@ -89,15 +90,17 @@ public class Agent extends AbstractPlayer {
                 double score_before = heuristic.evaluateState(stateObs);
 
                 // simulate
+                Vector2d prePos = stateObs.getAvatarPosition();
                 Types.ACTIONS action = action_mapping.get(action_num);
                 stateObs.advance(action);
+                int eff = prePos.equals(stateObs.getAvatarPosition()) ? 0 : 1;
 
                 double score_after = heuristic.evaluateState(stateObs);
 
                 double delta_score = factor * (score_after - score_before);
                 factor = factor * m_gamma;
                 // collect data
-                sequence[depth] = RLDataExtractor.makeInstance(features, action_num, delta_score);
+                sequence[depth] = RLDataExtractor.makeInstance(features, eff, action_num, delta_score);
 
             } catch (Exception exc) {
                 exc.printStackTrace();

@@ -20,6 +20,8 @@ import weka.core.FastVector;
 import weka.core.Instance;
 import weka.core.Instances;
 
+import javax.swing.text.Position;
+
 /**
  * @author yuy
  */
@@ -51,17 +53,22 @@ public class RLDataExtractor {
 
     }
 
-    public static Instance makeInstance(double[] features, int action, double reward) {
-        features[870] = action;
-        features[871] = reward;
+    public static Instance makeInstance(double[] features, int eff, int action, double reward) {
+        features[674] = eff;
+        features[875] = action;
+        features[876] = reward;
         Instance ins = new Instance(1, features);
         ins.setDataset(s_datasetHeader);
         return ins;
     }
 
+    private static double disMan(Vector2d a1, Vector2d a2) {
+        return Math.abs(a1.x - a2.x) + Math.abs(a1.y - a2.y);
+    }
+
     public static double[] featureExtract(StateObservation obs) {
 
-        double[] feature = new double[872];  // 868 + 1 + 1(action) + 1(Q)
+        double[] feature = new double[877];  // 868 + 6 + 1 + 1(action) + 1(Q)
 
         // 448 locations
         int[][] map = new int[28][31];
@@ -73,7 +80,6 @@ public class RLDataExtractor {
             for (ArrayList<Observation> l : obs.getMovablePositions()) allobj.addAll(l);
         if (obs.getNPCPositions() != null)
             for (ArrayList<Observation> l : obs.getNPCPositions()) allobj.addAll(l);
-
 
         for (Observation o : allobj) {
             Vector2d p = o.position;
@@ -87,11 +93,40 @@ public class RLDataExtractor {
             for (int x = 0; x < 28; x++)
                 feature[y * 28 + x] = map[x][y];
 
+        double[] distance = {1000, 1000, 1000, 1000};
+        if (obs.getNPCPositions() != null) {
+            for (ArrayList<Observation> l : obs.getNPCPositions()) {
+                Observation obser = l.get(0);
+                switch (obser.itype) {
+                    case 14:
+                    case 15:
+                        distance[0] = disMan(obser.position, pos);
+                        break;
+                    case 17:
+                    case 18:
+                        distance[1] = disMan(obser.position, pos);
+                        break;
+                    case 20:
+                    case 21:
+                        distance[2] = disMan(obser.position, pos);
+                        break;
+                    case 23:
+                    case 24:
+                        distance[3] = disMan(obser.position, pos);
+                        break;
+                }
+            }
+        }
+
         // 4 states
         feature[868] = obs.getGameTick();
 //        feature[869] = obs.getAvatarSpeed();
 //        feature[870] = obs.getAvatarHealthPoints();
         feature[869] = obs.getAvatarType();
+        feature[870] = distance[0];
+        feature[871] = distance[1];
+        feature[872] = distance[2];
+        feature[873] = distance[3];
 
         return feature;
     }
@@ -117,8 +152,22 @@ public class RLDataExtractor {
 //        attInfo.addElement(att);
         att = new Attribute("AvatarType");
         attInfo.addElement(att);
+        att = new Attribute("Distance1");
+        attInfo.addElement(att);
+        att = new Attribute("Distance2");
+        attInfo.addElement(att);
+        att = new Attribute("Distance3");
+        attInfo.addElement(att);
+        att = new Attribute("Distance4");
+        attInfo.addElement(att);
         //action
         FastVector actions = new FastVector();
+        actions.addElement("0");
+        actions.addElement("1");
+        att = new Attribute("EffectAction", actions);
+        attInfo.addElement(att);
+
+        actions = new FastVector();
         actions.addElement("0");
         actions.addElement("1");
         actions.addElement("2");
