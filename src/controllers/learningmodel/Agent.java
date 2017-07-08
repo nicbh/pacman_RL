@@ -24,13 +24,13 @@ public class Agent extends AbstractPlayer {
 
     public static HashMap<Integer, Types.ACTIONS> action_mapping;
     protected static Instances m_dataset;
-    private static int SIMULATION_DEPTH = 20;
+    private static int SIMULATION_DEPTH = 15;
     protected Classifier m_model;
     protected Random m_rnd;
     protected QPolicy m_policy;
     protected int N_ACTIONS;
     protected int m_maxPoolSize = 1000;
-    protected double m_gamma = 0.99;
+    protected double m_gamma = 0.8;
 
     public Agent(StateObservation stateObs, ElapsedCpuTimer elapsedTimer) {
         m_rnd = new Random();
@@ -63,7 +63,7 @@ public class Agent extends AbstractPlayer {
         Types.ACTIONS bestAction = null;
         try {
             double[] features = RLDataExtractor.featureExtract(stateObs);
-            int action_num = m_policy.getActionNoExplore(features); // no exploration
+            int action_num = m_policy.getActionNoExplore(features, stateObs); // no exploration
             bestAction = action_mapping.get(action_num);
         } catch (Exception exc) {
             exc.printStackTrace();
@@ -85,7 +85,7 @@ public class Agent extends AbstractPlayer {
             try {
                 double[] features = RLDataExtractor.featureExtract(stateObs);
 
-                int action_num = policy.getAction(features);
+                int action_num = policy.getAction(features, stateObs);
 
                 double score_before = heuristic.evaluateState(stateObs);
 
@@ -94,13 +94,16 @@ public class Agent extends AbstractPlayer {
                 Types.ACTIONS action = action_mapping.get(action_num);
                 stateObs.advance(action);
                 int eff = prePos.equals(stateObs.getAvatarPosition()) ? 0 : 1;
+                int alive = stateObs.getGameWinner() == Types.WINNER.NO_WINNER ? 1 :
+                        (stateObs.getGameWinner() == Types.WINNER.PLAYER_LOSES ? 0 : 2);
 
                 double score_after = heuristic.evaluateState(stateObs);
 
                 double delta_score = factor * (score_after - score_before);
                 factor = factor * m_gamma;
+
                 // collect data
-                sequence[depth] = RLDataExtractor.makeInstance(features, eff, action_num, delta_score);
+                sequence[depth] = RLDataExtractor.makeInstance(features, eff, alive, action_num, delta_score);
 
             } catch (Exception exc) {
                 exc.printStackTrace();
@@ -116,7 +119,7 @@ public class Agent extends AbstractPlayer {
         double accQ = 0;
         if (!stateObs.isGameOver()) {
             try {
-                accQ = factor * policy.getMaxQ(RLDataExtractor.featureExtract(stateObs));
+                accQ = factor * policy.getMaxQ(RLDataExtractor.featureExtract(stateObs), stateObs);
             } catch (Exception exc) {
                 exc.printStackTrace();
             }
@@ -126,23 +129,6 @@ public class Agent extends AbstractPlayer {
         for (depth = depth - 1; depth >= 0; depth--) {
             accQ += sequence[depth].classValue();
             sequence[depth].setClassValue(accQ);
-
-//            for (int i = 0; i < m_dataset.numInstances(); i++) {
-//                Instance inst = m_dataset.instance(i);
-//                Instance inst2 = sequence[depth];
-//                double[] ins = inst.toDoubleArray();
-//                double[] ins2 = inst2.toDoubleArray();
-//                for (int jj = 0; jj < ins.length - 6; jj++) {
-//                    if (ins[jj] != ins2[jj]) {
-//                        ins = null;
-//                        break;
-//                    }
-//                }
-//                if (ins != null && ins[ins.length - 2] == ins[ins.length - 2]) {
-//                    System.out.println(ins[ins.length - 1] + "," + ins2[ins.length - 1]);
-//                }
-//            }
-
             data.add(sequence[depth]);
         }
         return data;

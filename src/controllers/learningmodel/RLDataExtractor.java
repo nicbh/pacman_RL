@@ -53,22 +53,23 @@ public class RLDataExtractor {
 
     }
 
-    public static Instance makeInstance(double[] features, int eff, int action, double reward) {
-        features[674] = eff;
-        features[875] = action;
-        features[876] = reward;
+    public static Instance makeInstance(double[] features,int eff, int alive, int action, double reward) {
+        features[874] = eff;
+        features[875] = alive;
+        features[876] = action;
+        features[877] = reward;
         Instance ins = new Instance(1, features);
         ins.setDataset(s_datasetHeader);
         return ins;
     }
 
     private static double disMan(Vector2d a1, Vector2d a2) {
-        return Math.abs(a1.x - a2.x) + Math.abs(a1.y - a2.y);
+        return (Math.abs(a1.x - a2.x) + Math.abs(a1.y - a2.y)) / 10;
     }
 
     public static double[] featureExtract(StateObservation obs) {
 
-        double[] feature = new double[877];  // 868 + 6 + 1 + 1(action) + 1(Q)
+        double[] feature = new double[878];  // 868 + 6 + 2 + 1(action) + 1(Q)
 
         // 448 locations
         int[][] map = new int[28][31];
@@ -96,24 +97,26 @@ public class RLDataExtractor {
         double[] distance = {1000, 1000, 1000, 1000};
         if (obs.getNPCPositions() != null) {
             for (ArrayList<Observation> l : obs.getNPCPositions()) {
-                Observation obser = l.get(0);
-                switch (obser.itype) {
-                    case 14:
-                    case 15:
-                        distance[0] = disMan(obser.position, pos);
-                        break;
-                    case 17:
-                    case 18:
-                        distance[1] = disMan(obser.position, pos);
-                        break;
-                    case 20:
-                    case 21:
-                        distance[2] = disMan(obser.position, pos);
-                        break;
-                    case 23:
-                    case 24:
-                        distance[3] = disMan(obser.position, pos);
-                        break;
+                if (l.size() > 0) {
+                    Observation obser = l.get(0);
+                    switch (obser.itype) {
+                        case 14:
+                        case 15:
+                            distance[0] = disMan(obser.position, pos);
+                            break;
+                        case 17:
+                        case 18:
+                            distance[1] = disMan(obser.position, pos);
+                            break;
+                        case 20:
+                        case 21:
+                            distance[2] = disMan(obser.position, pos);
+                            break;
+                        case 23:
+                        case 24:
+                            distance[3] = disMan(obser.position, pos);
+                            break;
+                    }
                 }
             }
         }
@@ -165,6 +168,13 @@ public class RLDataExtractor {
         actions.addElement("0");
         actions.addElement("1");
         att = new Attribute("EffectAction", actions);
+        attInfo.addElement(att);
+
+        actions = new FastVector();
+        actions.addElement("0");
+        actions.addElement("1");
+        actions.addElement("2");
+        att = new Attribute("Alive", actions);
         attInfo.addElement(att);
 
         actions = new FastVector();
